@@ -1,59 +1,85 @@
-#include <atomic>
-#include <chrono>
-#define MINIAUDIO_IMPLEMENTATION  // <- ဒါကို အရင်ဆုံး လုံးဝ ထိပ်မှာ ထားရပါမယ်
+#include <cstdint>
+#include <fstream>
+#include <vector>
+
+#include "video_reader.hpp"
+// #define MINIAUDIO_IMPLEMENTATION  // <- ဒါကို အရင်ဆုံး လုံးဝ ထိပ်မှာ ထားရပါမယ်
+#include <SDL2/SDL.h>
+
 #include <cstring>
 #include <iostream>
-#include <thread>
 
-#include "audio_device.hpp"
+bool writeFile(const std::vector<uint8_t>& buff, const std::string output) {
+  if (buff.empty()) {
+    std::cerr << "Empty Vector!\n";
+    return false;
+  }
+  std::ofstream outFile(output, std::ios::out | std::ios::binary);
 
-// main.cpp ရဲ့ ထိပ်ဆုံးမှာ ဒီအတိုင်း ရေးပေးပါ
+  if (!outFile.is_open()) {
+    std::cerr << "Open Failed!.Path: " << output << "\n";
+    return false;
+  }
+  outFile.write(reinterpret_cast<const char*>(buff.data()), buff.size());
+  outFile.close();
 
-int main() {
-  // Class instance တစ်ခု ဆောက်လိုက်ရုံရုံပါပဲ
-  AudioDevice player("/home/thancoder/Music/Ko_Feel_ကိုဖီလ်း_Don_t_Go(256k).mp3");
+  return true;
+}
 
-  // Init လုပ်မယ်
-  if (!player.init()) {
-    return 1;
+void playVideo(VideoReader& video) {
+  auto info = video.getFormatInfo();
+  // SDL Windows တည်ဆောက်ခြင်း
+  SDL_Init(SDL_INIT_VIDEO);
+  SDL_Window* window =
+      SDL_CreateWindow("Video Player", SDL_WINDOWPOS_UNDEFINED,
+                       SDL_WINDOWPOS_UNDEFINED, info.width, info.height, 0);
+  SDL_Renderer* renderer =
+      SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+  SDL_Texture* texture =
+      SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGB24,
+                        SDL_TEXTUREACCESS_STREAMING, info.width, info.height);
+
+  std::vector<uint8_t> pixelBuffer;
+  bool running = true;
+  SDL_Event event;
+
+  while (running) {
+    while (SDL_PollEvent(&event)) {
+      if (event.type == SDL_QUIT) running = false;
+    }
+
+    // ဗီဒီယို Class ဆီကနေ Frame ကို သန့်သန့်ရှင်းရှင်း တောင်းယူတယ်
+    if (video.readNextFrame(pixelBuffer)) {
+      SDL_UpdateTexture(texture, nullptr, pixelBuffer.data(), info.width * 3);
+      SDL_RenderClear(renderer);
+      SDL_RenderCopy(renderer, texture, nullptr, nullptr);
+      SDL_RenderPresent(renderer);
+
+      // Frame Rate အလိုက် စောင့်ဆိုင်းခြင်း
+      SDL_Delay(static_cast<Uint32>(1000.0 / info.fps));
+    } else {
+      SDL_Delay(10);  // ဖိုင်ဆုံးရင် ငြိမ်နေမယ်
+    }
   }
 
-  // Play မယ်
-  std::cout << "Raw PCM ဖိုင်ကို ဖွင့်နေပါပြီ... ရပ်တန့်ရန် Enter နှိပ်ပါ။" << std::endl;
-  if (!player.start()) {
-    std::cerr << "Error: Audio Playback စတင်လို့မရပါ!" << std::endl;
+  // Cleanup
+  SDL_DestroyTexture(texture);
+  SDL_DestroyRenderer(renderer);
+  SDL_DestroyWindow(window);
+  SDL_Quit();
+}
+// ffmpeg-8.1.1
+int main() {
+  VideoReader video("/home/thancoder/Videos/adehhh-sunset.mp4");
+
+  if (!video.openFile()) {
     return -1;
   }
 
-  std::atomic<bool> keep_monitor{true};
-
-  std::thread monitor_thread([&player, &keep_monitor]() {
-    while (keep_monitor) {
-      std::cout << "Duration: " << player.getDurationInSeconds() << "s \n";
-      std::cout << "Current: " << player.getCurrentInSeconds() << "s \n";
-
-      std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
-  });
-  std::cout << "press to seek 30s\n";
-  std::cin.get();
-  player.seek(30);
-
-  std::cout << "press to Stop" << std::endl;
-  std::cin.get();
-  player.stop();
-
-  std::cout << "press to Play " << std::endl;
-  std::cin.get();
-  player.start();
-
-  std::cout << "ထွက်ခွာရန် Enter နှိပ်ပါ။" << std::endl;
-  std::cin.get();
-
-  keep_monitor = false;
-  if (monitor_thread.joinable()) {
-    monitor_thread.join();
-  }
+  VideoFormatInfo info = video.getFormatInfo();
+  std::cout << "Playing: " << info.width << "x" << info.height << " @ "
+            << info.fps << " FPS\n";
+  playVideo(video);
 
   return 0;
 }

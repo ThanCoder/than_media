@@ -6,8 +6,7 @@
 #include <iostream>
 #include <vector>
 
-bool AudioFileSaver::saveAsWav(AudioDecoder& decoder,
-                               const std::string& outPath) {
+bool AudioFileSaver::saveAsWav(MediaFile& decoder, const std::string& outPath) {
   if (!decoder.openFile()) return false;
 
   std::ofstream outFile(outPath, std::ios::binary);
@@ -104,8 +103,7 @@ void writeAdtsHeader(uint8_t* packet, int dataLength, int sampleRate,
   packet[6] = 0xFC;
 }
 
-bool AudioFileSaver::saveAsAac(AudioDecoder& decoder,
-                               const std::string& outPath) {
+bool AudioFileSaver::saveAsAac(MediaFile& decoder, const std::string& outPath) {
   if (!decoder.openFile()) return false;
 
   AudioFormatInfo inputFmt = decoder.getTargetFormat();
@@ -244,8 +242,7 @@ bool AudioFileSaver::saveAsAac(AudioDecoder& decoder,
 // ==========================================
 // ၂။ MP3 File Saver (FFmpeg MP3 Encoder သုံးပြီး ချုံ့မယ်)
 // ==========================================
-bool AudioFileSaver::saveAsMp3(AudioDecoder& decoder,
-                               const std::string& outPath) {
+bool AudioFileSaver::saveAsMp3(MediaFile& decoder, const std::string& outPath) {
   if (!decoder.openFile()) return false;
 
   AudioFormatInfo inputFmt = decoder.getTargetFormat();

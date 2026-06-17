@@ -9,7 +9,9 @@ extern "C" {
 #include <libavformat/avformat.h>
 #include <libavutil/imgutils.h>
 #include <libavutil/opt.h>
+#include <libavutil/pixdesc.h>
 #include <libswresample/swresample.h>
+#include <libswscale/swscale.h>
 }
 
 // အသံရဲ့ Format Information တွေကို တခြား Class တွေက လှမ်းသိနိုင်ဖို့ Struct တစ်ခု ဆောက်ထားမယ်
@@ -18,28 +20,29 @@ struct AudioFormatInfo {
   int channels = 2;
   AVSampleFormat sampleFmt = AV_SAMPLE_FMT_S16;  // miniaudio နဲ့ အဆင်ပြေဆုံး format
 };
-class AudioDecoder {
+
+class MediaFile {
  public:
-  AudioDecoder(const std::string& video_path,
-               const AudioFormatInfo& target_format = AudioFormatInfo());
-  ~AudioDecoder();
-
-  // ၁။ အစောကြီးကတည်းက conversion ကြီး တစ်ခုလုံး လုပ်ပစ်တာမျိုး မဟုတ်တော့ဘူး
-  // ဒီကောင်က ဖိုင်ပွင့်မပွင့်နဲ့ Audio Stream ပါမပါပဲ စစ်ပြီး Context တွေ ပြင်ဆင်မယ်
+  MediaFile(const std::string& video_path,
+            const AudioFormatInfo& target_format = AudioFormatInfo());
+  ~MediaFile();
   bool openFile();
-
-  // ၂။ အခြား Class တွေ (Player/Saver) ကနေ ကွင်းဆက်မပြတ် (Loop ပတ်ပြီး) PCM data တောင်းဖို့
-  // သုံးမယ့် function ဒီကောင်က ဗီဒီယိုထဲကနေ Packet တစ်ခုချင်းစီကို Decode/Resample လုပ်ပြီး RAW
-  // bytes တွေကို chunk လိုက် ထုတ်ပေးမယ် ဖိုင်ဆုံးသွားရင် false ပြန်မယ်
   bool readNextAudioChunk(std::vector<uint8_t>& out_chunk);
   bool seekToSeconds(double seconds);
   double getDurationInSeconds();
   double getCurrentInSeconds();
+  std::string getMetadata(const std::string& key);
+  std::vector<uint8_t> getAlbumArt();
 
   // ၃။ တခြား Class တွေက လာမေးမယ့် Getter Functions
   AudioFormatInfo getTargetFormat() const { return targetFormat; }
   std::string getCurrentPath() const { return inputPath; }
   void closeFile();
+  //**********video********** */
+  // targetWidth နဲ့ targetHeight ကို ၀ ထားရင် မူရင်း size အတိုင်း ထွက်ပါမယ်
+  std::vector<uint8_t> getVideoThumbnail(double seconds, int targetWidth = 0,
+                                         int targetHeight = 0);
+  // VideoFormatInfo getVideoFormatInfo();
 
  private:
   std::string inputPath;
@@ -50,6 +53,8 @@ class AudioDecoder {
   AVCodecContext* codecContext = nullptr;
   SwrContext* swrCtx = nullptr;
   int audioStreamIndex = -1;
+  int videoStreamIndex = -1;
+  AVCodecContext* videoCodecContext = nullptr;
 
   // FFmpeg Internal Reusable Packets/Frames
   AVPacket* packet = nullptr;

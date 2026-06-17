@@ -2,12 +2,12 @@
 #pragma once
 #include <cstring>
 
-#include "audio_decoder.hpp"
+#include "media_file.hpp"
 #include "miniaudio.h"
 
 class AudioDevice {
  private:
-  AudioDecoder decoder;
+  MediaFile decoder;
   ma_device device;
   ma_device_config deviceConfig;
   bool isInitialized;
@@ -43,4 +43,5 @@ class AudioDevice {
   double getCurrentInSeconds();
   double getDurationInSeconds();
   void seek(double seconds);
+  void setVolume(float volume);
 };

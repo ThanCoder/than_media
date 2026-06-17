@@ -1,3 +1,4 @@
+#define MINIAUDIO_IMPLEMENTATION
 #include "audio_device.hpp"
 
 #include <iostream>
@@ -83,8 +84,12 @@ void AudioDevice::stop() {
     ma_device_stop(&device);
   }
 }
-double AudioDevice::getCurrentInSeconds() { return decoder.getCurrentInSeconds(); }
-double AudioDevice::getDurationInSeconds() { return decoder.getDurationInSeconds(); }
+double AudioDevice::getCurrentInSeconds() {
+  return decoder.getCurrentInSeconds();
+}
+double AudioDevice::getDurationInSeconds() {
+  return decoder.getDurationInSeconds();
+}
 
 void AudioDevice::uninit() {
   if (isInitialized) {
@@ -101,7 +106,7 @@ void AudioDevice::seek(double seconds) {
     ma_device_stop(&device);
   }
 
-  // ၂။ သင့်ရဲ့ AudioDecoder ထဲမှာ seek လုပ်မယ့် function ကို လှမ်းခေါ်ပါ
+  // ၂။ သင့်ရဲ့ MediaFile ထဲမှာ seek လုပ်မယ့် function ကို လှမ်းခေါ်ပါ
   // (ဥပမာ- decoder.seekToSeconds(seconds); )
   decoder.seekToSeconds(seconds);
 
@@ -113,4 +118,10 @@ void AudioDevice::seek(double seconds) {
   if (wasPlaying) {
     ma_device_start(&device);
   }
+}
+
+void AudioDevice::setVolume(float volume) {
+  // volume တန်ဖိုးသည် 0.0f (Nute) မှ 1.0f (Full Volume) အထိ ဖြစ်ရပါမယ်
+  // 1.0f ထက်ကျော်ရင် အသံကို ပိုပြီး Amplify လုပ်ပေးပါတယ်
+  ma_device_set_master_volume(&device, volume);
 }
