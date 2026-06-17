@@ -41,6 +41,7 @@ add_executable(media_app
     src/video/video_reader.cpp
     src/video/video_reader.hpp
     src/ffi/ffi_audio_wrapper.cpp
+    src/ffi/ffi_file_saver.cpp
 
 )
 
