@@ -1,0 +1,16 @@
+# Run with `dart run ffigen --config ffigen.yaml`.
+name: ThanMediaBindings
+description: |
+  Bindings for `native_src/src/ffi_wrapper.h`.
+
+  Regenerate bindings with `dart run ffigen --config ffigen.yaml`.
+output: "lib/than_media_bindings_generated.dart"
+headers:
+  entry-points:
+    - "native_src/src/ffi_wrapper.h"
+  include-directives:
+    - "native_src/src/ffi_wrapper.h"
+ffi-native:
+comments:
+  style: any
+  length: full
