@@ -35,6 +35,9 @@ class VideoReader {
                                          int targetHeight = 0);
 
   VideoFormatInfo getFormatInfo() const { return formatInfo; }
+  const char* getCodecCString() {
+    return m_codecName.c_str();  // ဒါဆိုရင် မန်မိုရီ ပျောက်မသွားတော့ပါဘူး
+  }
 
  private:
   std::string inputPath;
@@ -50,6 +53,8 @@ class VideoReader {
   AVFrame* frame = nullptr;
   AVFrame* rgbFrame = nullptr;
   struct SwsContext* swsCtx = nullptr;
+
+  std::string m_codecName;  // Class ထဲမှာ တစ်ခါတည်း သိမ်းထားမယ်
 
   void cleanup();
 };

@@ -6,3 +6,42 @@ import 'dart:ffi' as ffi;
 
 @ffi.Native<ffi.Int Function(ffi.Int, ffi.Int)>()
 external int ffi_sum(int a, int b);
+
+@ffi.Native<ffi.Pointer<ffi.Void> Function(ffi.Pointer<ffi.Char>)>()
+external ffi.Pointer<ffi.Void> create_video_reader(
+  ffi.Pointer<ffi.Char> video_path_ptr,
+);
+
+@ffi.Native<
+  ffi.Bool Function(ffi.Pointer<ffi.Void>, ffi.Pointer<ffi.UnsignedChar>)
+>()
+external bool decode_next_frame(
+  ffi.Pointer<ffi.Void> reader_ptr,
+  ffi.Pointer<ffi.UnsignedChar> output_buffer_ptr,
+);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Void>)>()
+external void destroy_video_reader(ffi.Pointer<ffi.Void> reader_ptr);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Void>)>()
+external void close_video_reader(ffi.Pointer<ffi.Void> video_ptr);
+
+@ffi.Native<VideoFormatInfo Function(ffi.Pointer<ffi.Void>)>()
+external VideoFormatInfo get_format_info(ffi.Pointer<ffi.Void> reader_ptr);
+
+final class VideoFormatInfo extends ffi.Struct {
+  @ffi.Int()
+  external int width;
+
+  @ffi.Int()
+  external int height;
+
+  @ffi.Double()
+  external double fps;
+
+  @ffi.Double()
+  external double durationSeconds;
+
+  /// std::string အစား const char* ကို ပြောင်းသုံးရပါတယ်
+  external ffi.Pointer<ffi.Char> codecName;
+}

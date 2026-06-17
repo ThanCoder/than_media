@@ -2,6 +2,7 @@
 #include <fstream>
 #include <vector>
 
+#include "ffi_wrapper.h"
 #include "video_reader.hpp"
 // #define MINIAUDIO_IMPLEMENTATION  // <- ဒါကို အရင်ဆုံး လုံးဝ ထိပ်မှာ ထားရပါမယ်
 #include <SDL2/SDL.h>
@@ -77,9 +78,19 @@ int main() {
   }
 
   VideoFormatInfo info = video.getFormatInfo();
-  std::cout << "Playing: " << info.width << "x" << info.height << " @ "
-            << info.fps << " FPS\n";
-  playVideo(video);
+  std::cout << "Playing: " << info.width << "x" << info.height
+            << " @ "
+               "Codec: "
+            << info.codecName << " " << info.fps << " FPS\n";
+  // playVideo(video);
+  // wrapper test
+  auto vd = video_reader_create("/home/thancoder/Videos/adehhh-sunset.mp4");
+  auto pl = reinterpret_cast<VideoReader*>(vd);
+
+  // playVideo(*pl);
+  std::cout << "info: " << video_reader_get_codec_name(pl) << "\n";
+
+  video_reader_destroy(vd);
 
   return 0;
 }

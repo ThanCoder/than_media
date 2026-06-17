@@ -14,3 +14,7 @@ ffi-native:
 comments:
   style: any
   length: full
+
+# ignore-source-errors: true
+compiler-opts:
+  - "-I/home/thancoder/projects/flutter_ffi_projects/than_media/native_src"

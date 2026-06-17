@@ -76,6 +76,10 @@ bool VideoReader::openFile() {
       avcodec_descriptor_get(stream->codecpar->codec_id);
   if (desc) formatInfo.codecName = desc->name;
 
+  // set codec name
+  auto info = getFormatInfo();
+  m_codecName = info.codecName;
+
   return true;
 }
 

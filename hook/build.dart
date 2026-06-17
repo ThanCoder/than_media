@@ -40,5 +40,6 @@ void main(List<String> args) async {
         ..level = .ALL
         ..onRecord.listen((record) => print(record.message)),
     );
+    output.dependencies.add(File(libso).uri);
   });
 }
