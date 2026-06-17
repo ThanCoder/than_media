@@ -7,9 +7,9 @@ description: |
 output: "lib/than_media_bindings_generated.dart"
 headers:
   entry-points:
-    - "native_src/src/ffi_wrapper.h"
+    - "native_src/src/ffi/ffi_wrapper.h"
   include-directives:
-    - "native_src/src/ffi_wrapper.h"
+    - "native_src/src/ffi/ffi_wrapper.h"
 ffi-native:
 comments:
   style: any

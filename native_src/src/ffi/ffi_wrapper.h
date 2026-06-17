@@ -61,13 +61,12 @@ double media_file_getCurrentInSeconds(void* media_file_ptr);
 const char* media_file_getMetadata(void* media_file_ptr, const char* key);
 unsigned char* media_file_getAlbumArt(void* media_file_ptr);
 
-// ၃။ တခြား Class တွေက လာမေးမယ့် Getter Functions
 // AudioFormatInfo getTargetFormat(void* media_file_ptr);
 const char* media_file_getCurrentPath(void* media_file_ptr);
 void media_file_closeFile(void* media_file_ptr);
 unsigned char* media_file_getVideoThumbnail(void* media_file_ptr,
-                                            double seconds, int targetWidth = 0,
-                                            int targetHeight = 0);
+                                            double seconds, int targetWidth,
+                                            int targetHeight);
 
 #ifdef __cplusplus
 }

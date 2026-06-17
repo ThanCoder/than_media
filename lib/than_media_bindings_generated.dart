@@ -4,32 +4,179 @@
 // ignore_for_file: type=lint, unused_import
 import 'dart:ffi' as ffi;
 
-@ffi.Native<ffi.Int Function(ffi.Int, ffi.Int)>()
-external int ffi_sum(int a, int b);
-
+/// *********************Video Reader********************************* */
 @ffi.Native<ffi.Pointer<ffi.Void> Function(ffi.Pointer<ffi.Char>)>()
-external ffi.Pointer<ffi.Void> create_video_reader(
+external ffi.Pointer<ffi.Void> video_reader_create(
   ffi.Pointer<ffi.Char> video_path_ptr,
 );
 
 @ffi.Native<
   ffi.Bool Function(ffi.Pointer<ffi.Void>, ffi.Pointer<ffi.UnsignedChar>)
 >()
-external bool decode_next_frame(
+external bool video_reader_decode_next_frame(
   ffi.Pointer<ffi.Void> reader_ptr,
   ffi.Pointer<ffi.UnsignedChar> output_buffer_ptr,
 );
 
-@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Void>)>()
-external void destroy_video_reader(ffi.Pointer<ffi.Void> reader_ptr);
+@ffi.Native<Video_Format_Info Function(ffi.Pointer<ffi.Void>)>()
+external Video_Format_Info video_reader_get_format_info(
+  ffi.Pointer<ffi.Void> reader_ptr,
+);
+
+@ffi.Native<ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Void>)>()
+external ffi.Pointer<ffi.Char> video_reader_get_codec_name(
+  ffi.Pointer<ffi.Void> reader_ptr,
+);
 
 @ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Void>)>()
-external void close_video_reader(ffi.Pointer<ffi.Void> video_ptr);
+external void video_reader_close(ffi.Pointer<ffi.Void> video_ptr);
 
-@ffi.Native<VideoFormatInfo Function(ffi.Pointer<ffi.Void>)>()
-external VideoFormatInfo get_format_info(ffi.Pointer<ffi.Void> reader_ptr);
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Void>)>()
+external void video_reader_destroy(ffi.Pointer<ffi.Void> reader_ptr);
 
-final class VideoFormatInfo extends ffi.Struct {
+/// *********************Audio Device********************************* */
+@ffi.Native<ffi.Pointer<ffi.Void> Function(ffi.Pointer<ffi.Char>)>()
+external ffi.Pointer<ffi.Void> audio_device_create(
+  ffi.Pointer<ffi.Char> file_path,
+);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Void>)>()
+external void audio_device_destroy(ffi.Pointer<ffi.Void> audio_device_ptr);
+
+@ffi.Native<ffi.Bool Function(ffi.Pointer<ffi.Void>)>()
+external bool audio_device_init(ffi.Pointer<ffi.Void> audio_device_ptr);
+
+@ffi.Native<ffi.Bool Function(ffi.Pointer<ffi.Void>)>()
+external bool audio_device_start(ffi.Pointer<ffi.Void> audio_device_ptr);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Void>)>()
+external void audio_device_stop(ffi.Pointer<ffi.Void> audio_device_ptr);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Void>)>()
+external void audio_device_uninit(ffi.Pointer<ffi.Void> audio_device_ptr);
+
+@ffi.Native<ffi.Double Function(ffi.Pointer<ffi.Void>)>()
+external double audio_device_getCurrentInSeconds(
+  ffi.Pointer<ffi.Void> audio_device_ptr,
+);
+
+@ffi.Native<ffi.Double Function(ffi.Pointer<ffi.Void>)>()
+external double audio_device_getDurationInSeconds(
+  ffi.Pointer<ffi.Void> audio_device_ptr,
+);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Void>, ffi.Double)>()
+external void audio_device_seek(
+  ffi.Pointer<ffi.Void> audio_device_ptr,
+  double seconds,
+);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Void>, ffi.Float)>()
+external void audio_device_setVolume(
+  ffi.Pointer<ffi.Void> audio_device_ptr,
+  double volume,
+);
+
+/// *********************File Saver********************************* */
+@ffi.Native<ffi.Bool Function(ffi.Pointer<ffi.Void>, ffi.Pointer<ffi.Char>)>()
+external bool file_saver_saveAsWav(
+  ffi.Pointer<ffi.Void> media_file_ptr,
+  ffi.Pointer<ffi.Char> outPath,
+);
+
+@ffi.Native<ffi.Bool Function(ffi.Pointer<ffi.Void>, ffi.Pointer<ffi.Char>)>()
+external bool file_saver_saveAsAac(
+  ffi.Pointer<ffi.Void> media_file_ptr,
+  ffi.Pointer<ffi.Char> outPath,
+);
+
+@ffi.Native<ffi.Bool Function(ffi.Pointer<ffi.Void>, ffi.Pointer<ffi.Char>)>()
+external bool file_saver_saveAsMp3(
+  ffi.Pointer<ffi.Void> media_file_ptr,
+  ffi.Pointer<ffi.Char> outPath,
+);
+
+/// Audio_Format::AUDIO_FORMAT_WAV
+@ffi.Native<
+  ffi.Bool Function(ffi.Pointer<ffi.Void>, ffi.Pointer<ffi.Char>, ffi.Int)
+>()
+external bool file_saver_save_as(
+  ffi.Pointer<ffi.Void> media_file_ptr,
+  ffi.Pointer<ffi.Char> outPath,
+  int format,
+);
+
+/// *********************Media File********************************* */
+@ffi.Native<ffi.Pointer<ffi.Void> Function(ffi.Pointer<ffi.Char>)>()
+external ffi.Pointer<ffi.Void> media_file_create(
+  ffi.Pointer<ffi.Char> file_path,
+);
+
+@ffi.Native<ffi.Bool Function(ffi.Pointer<ffi.Void>)>()
+external bool media_file_openFile(ffi.Pointer<ffi.Void> media_file_ptr);
+
+@ffi.Native<
+  ffi.Bool Function(ffi.Pointer<ffi.Void>, ffi.Pointer<ffi.UnsignedChar>)
+>()
+external bool media_file_readNextAudioChunk(
+  ffi.Pointer<ffi.Void> media_file_ptr,
+  ffi.Pointer<ffi.UnsignedChar> out_chunk,
+);
+
+@ffi.Native<ffi.Bool Function(ffi.Pointer<ffi.Void>, ffi.Double)>()
+external bool media_file_seekToSeconds(
+  ffi.Pointer<ffi.Void> media_file_ptr,
+  double seconds,
+);
+
+@ffi.Native<ffi.Double Function(ffi.Pointer<ffi.Void>)>()
+external double media_file_getDurationInSeconds(
+  ffi.Pointer<ffi.Void> media_file_ptr,
+);
+
+@ffi.Native<ffi.Double Function(ffi.Pointer<ffi.Void>)>()
+external double media_file_getCurrentInSeconds(
+  ffi.Pointer<ffi.Void> media_file_ptr,
+);
+
+@ffi.Native<
+  ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Void>, ffi.Pointer<ffi.Char>)
+>()
+external ffi.Pointer<ffi.Char> media_file_getMetadata(
+  ffi.Pointer<ffi.Void> media_file_ptr,
+  ffi.Pointer<ffi.Char> key,
+);
+
+@ffi.Native<ffi.Pointer<ffi.UnsignedChar> Function(ffi.Pointer<ffi.Void>)>()
+external ffi.Pointer<ffi.UnsignedChar> media_file_getAlbumArt(
+  ffi.Pointer<ffi.Void> media_file_ptr,
+);
+
+/// AudioFormatInfo getTargetFormat(void* media_file_ptr);
+@ffi.Native<ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Void>)>()
+external ffi.Pointer<ffi.Char> media_file_getCurrentPath(
+  ffi.Pointer<ffi.Void> media_file_ptr,
+);
+
+@ffi.Native<ffi.Void Function(ffi.Pointer<ffi.Void>)>()
+external void media_file_closeFile(ffi.Pointer<ffi.Void> media_file_ptr);
+
+@ffi.Native<
+  ffi.Pointer<ffi.UnsignedChar> Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Double,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external ffi.Pointer<ffi.UnsignedChar> media_file_getVideoThumbnail(
+  ffi.Pointer<ffi.Void> media_file_ptr,
+  double seconds,
+  int targetWidth,
+  int targetHeight,
+);
+
+final class Video_Format_Info extends ffi.Struct {
   @ffi.Int()
   external int width;
 
@@ -41,7 +188,20 @@ final class VideoFormatInfo extends ffi.Struct {
 
   @ffi.Double()
   external double durationSeconds;
+}
 
-  /// std::string အစား const char* ကို ပြောင်းသုံးရပါတယ်
-  external ffi.Pointer<ffi.Char> codecName;
+enum Audio_Format {
+  AUDIO_FORMAT_WAV(0),
+  AUDIO_FORMAT_AAC(1),
+  AUDIO_FORMAT_MP3(2);
+
+  final int value;
+  const Audio_Format(this.value);
+
+  static Audio_Format fromValue(int value) => switch (value) {
+    0 => AUDIO_FORMAT_WAV,
+    1 => AUDIO_FORMAT_AAC,
+    2 => AUDIO_FORMAT_MP3,
+    _ => throw ArgumentError('Unknown value for Audio_Format: $value'),
+  };
 }
