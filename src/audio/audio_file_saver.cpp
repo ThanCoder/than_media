@@ -6,7 +6,8 @@
 #include <iostream>
 #include <vector>
 
-bool AudioFileSaver::saveAsWav(MediaFile& decoder, const std::string& outPath) {
+bool AudioFileSaver::saveAsWav(MediaFile& decoder, const std::string& outPath,
+                               OnProgressCallback onProgress) {
   if (!decoder.openFile()) return false;
 
   std::ofstream outFile(outPath, std::ios::binary);
@@ -21,18 +22,46 @@ bool AudioFileSaver::saveAsWav(MediaFile& decoder, const std::string& outPath) {
 
   std::vector<uint8_t> chunk;
   int totalDataSize = 0;
+  double totalDuration = decoder.getDurationInSeconds();
+  bool keepGoing = true;
 
   // ၂။ Audio chunk တွေအကုန်လုံးကို ဆက်တိုက် ရေးသွားမယ်
   while (decoder.readNextAudioChunk(chunk)) {
     if (!chunk.empty()) {
       outFile.write(reinterpret_cast<const char*>(chunk.data()), chunk.size());
       totalDataSize += chunk.size();
+
+      // progress ထည့်ထားမယ်
+      if (totalDuration > 0.0 && onProgress != nullptr) {
+        double currentSeconds = decoder.getCurrentInSeconds();
+        double progress = currentSeconds / totalDuration;
+
+        // 🎯 Callback ဆီကနေ return value ကို လက်ခံတယ်
+        keepGoing = onProgress(progress > 1.0 ? 1.0 : progress);
+
+        // 🚨 အကယ်၍ Dart ဘက်က false ပြန်ပေးလိုက်ရင် loop ကို ဖျက်ပြီး ထွက်မယ်
+        if (!keepGoing) {
+          std::cout << "[AudioFileSaver] Conversion cancelled by user!"
+                    << std::endl;
+          break;
+          // အလုပ်မအောင်မြင်ကြောင်း ပြန်ပြောမယ်
+        }
+      }
     }
+  }
+  // user cancel လိုက်လိုက်ရင်
+  if (!keepGoing) {
+    outFile.close();
+    return false;
   }
 
   // ၃။ ဒေတာအားလုံး ရေးပြီးပြီဆိုမှ ဖိုင်ရဲ့ အစဆုံးကို ပြန်သွားပြီး Header အမှန်ကို ထည့်မယ်
   outFile.seekp(0, std::ios::beg);
   writeWavHeader(outFile, fmt.sampleRate, fmt.channels, totalDataSize);
+
+  if (onProgress != nullptr) {
+    onProgress(1.0);
+  }
 
   outFile.close();
   std::cout << "[AudioFileSaver] WAV saved successfully: " << outPath
@@ -103,7 +132,9 @@ void writeAdtsHeader(uint8_t* packet, int dataLength, int sampleRate,
   packet[6] = 0xFC;
 }
 
-bool AudioFileSaver::saveAsAac(MediaFile& decoder, const std::string& outPath) {
+//************************AAC****************************8 */
+bool AudioFileSaver::saveAsAac(MediaFile& decoder, const std::string& outPath,
+                               OnProgressCallback onProgress) {
   if (!decoder.openFile()) return false;
 
   AudioFormatInfo inputFmt = decoder.getTargetFormat();
@@ -146,6 +177,10 @@ bool AudioFileSaver::saveAsAac(MediaFile& decoder, const std::string& outPath) {
   AVFrame* encFrame = av_frame_alloc();
   AVPacket* encPacket = av_packet_alloc();
 
+  /// progress အတွက်
+  double totalDuration = decoder.getDurationInSeconds();
+  bool keepGoing = true;
+
   // ၄။ Decoder ထံမှ ဒေတာများ ဖတ်ယူခြင်း
   while (decoder.readNextAudioChunk(chunk)) {
     if (chunk.empty()) continue;
@@ -162,6 +197,22 @@ bool AudioFileSaver::saveAsAac(MediaFile& decoder, const std::string& outPath) {
 
     const uint8_t* srcData = chunk.data();
     swr_convert(aacSwr, resampledFrame->data, numSamples, &srcData, numSamples);
+    // progress ထည့်ထားမယ်
+    if (totalDuration > 0.0 && onProgress != nullptr) {
+      double currentSeconds = decoder.getCurrentInSeconds();
+      double progress = currentSeconds / totalDuration;
+
+      // 🎯 Callback ဆီကနေ return value ကို လက်ခံတယ်
+      keepGoing = onProgress(progress > 1.0 ? 1.0 : progress);
+
+      // 🚨 အကယ်၍ Dart ဘက်က false ပြန်ပေးလိုက်ရင် loop ကို ဖျက်ပြီး ထွက်မယ်
+      if (!keepGoing) {
+        std::cout << "[AudioFileSaver] Conversion cancelled by user!"
+                  << std::endl;
+        break;
+        // အလုပ်မအောင်မြင်ကြောင်း ပြန်ပြောမယ်
+      }
+    }
 
     // ပြောင်းလဲပြီးသား အသံတွေကို FIFO Queue ထဲ ထည့်ထားမယ်
     av_audio_fifo_write(fifo, (void**)resampledFrame->data, numSamples);
@@ -192,6 +243,18 @@ bool AudioFileSaver::saveAsAac(MediaFile& decoder, const std::string& outPath) {
       }
       av_frame_unref(encFrame);
     }
+  }
+
+  // user cance လုပ်ရင်
+  if (!keepGoing) {
+    // Clean up
+    av_frame_free(&encFrame);
+    av_packet_free(&encPacket);
+    av_audio_fifo_free(fifo);
+    swr_free(&aacSwr);
+    avcodec_free_context(&encCtx);
+    outFile.close();
+    return false;
   }
 
   // ၅။ Flush FIFO & Encoder (အမြီးကျန် နှာမောင်းကျန်များကို အကုန်ထုတ်ယူခြင်း)
@@ -226,6 +289,10 @@ bool AudioFileSaver::saveAsAac(MediaFile& decoder, const std::string& outPath) {
     outFile.write(reinterpret_cast<char*>(encPacket->data), encPacket->size);
     av_packet_unref(encPacket);
   }
+  // callback ပြန်ရှင်း
+  if (onProgress != nullptr) {
+    onProgress(1.0);
+  }
 
   // Clean up
   av_frame_free(&encFrame);
@@ -242,7 +309,8 @@ bool AudioFileSaver::saveAsAac(MediaFile& decoder, const std::string& outPath) {
 // ==========================================
 // ၂။ MP3 File Saver (FFmpeg MP3 Encoder သုံးပြီး ချုံ့မယ်)
 // ==========================================
-bool AudioFileSaver::saveAsMp3(MediaFile& decoder, const std::string& outPath) {
+bool AudioFileSaver::saveAsMp3(MediaFile& decoder, const std::string& outPath,
+                               OnProgressCallback onProgress) {
   if (!decoder.openFile()) return false;
 
   AudioFormatInfo inputFmt = decoder.getTargetFormat();
@@ -286,6 +354,9 @@ bool AudioFileSaver::saveAsMp3(MediaFile& decoder, const std::string& outPath) {
   AVFrame* encFrame = av_frame_alloc();
   AVPacket* encPacket = av_packet_alloc();
 
+  double totalDuration = decoder.getDurationInSeconds();
+  bool keepGoing = true;
+
   // ၃။ Decoder က ထွက်လာတဲ့ PCM data တွေကို ဖတ်ပြီး MP3 ပြောင်းမယ်
   while (decoder.readNextAudioChunk(chunk)) {
     if (chunk.empty()) continue;
@@ -293,6 +364,24 @@ bool AudioFileSaver::saveAsMp3(MediaFile& decoder, const std::string& outPath) {
     // လက်ရှိ chunk ရဲ့ sample အရေအတွက်
     int bytesPerSample = av_get_bytes_per_sample(inputFmt.sampleFmt);
     int numSamples = chunk.size() / (inputFmt.channels * bytesPerSample);
+
+    // progress ထည့်ထားမယ်
+    if (totalDuration > 0.0 && onProgress != nullptr) {
+      double currentSeconds = decoder.getCurrentInSeconds();
+      double progress = currentSeconds / totalDuration;
+
+      // 🎯 Callback ဆီကနေ return value ကို လက်ခံတယ်
+      keepGoing = onProgress(progress > 1.0 ? 1.0 : progress);
+
+      // 🚨 အကယ်၍ Dart ဘက်က false ပြန်ပေးလိုက်ရင် loop ကို ဖျက်ပြီး ထွက်မယ်
+      if (!keepGoing) {
+        std::cout << "[AudioFileSaver] Conversion cancelled by user!"
+                  << std::endl;
+
+        // အောက်က clean up အပိုင်းတွေဆီ တန်းသွားအောင် break လုပ် သို့မဟုတ် return false လုပ်ပါ
+        break;  // အလုပ်မအောင်မြင်ကြောင်း ပြန်ပြောမယ်
+      }
+    }
 
     // Encoder frame သတ်မှတ်ချက်
     encFrame->nb_samples = numSamples;
@@ -314,12 +403,25 @@ bool AudioFileSaver::saveAsMp3(MediaFile& decoder, const std::string& outPath) {
     }
     av_frame_unref(encFrame);
   }
+  // user က progress ကနေ cancel လုပ်လိုက်ရင် ထွက်မယ်
+  if (!keepGoing) {
+    av_frame_free(&encFrame);
+    av_packet_free(&encPacket);
+    swr_free(&mp3Swr);
+    avcodec_free_context(&encCtx);
+    outFile.close();
+    return false;
+  }
 
   // Flush Encoder (ကျန်နေတာတွေ အကုန်ထုတ်မယ်)
   avcodec_send_frame(encCtx, nullptr);
   while (avcodec_receive_packet(encCtx, encPacket) >= 0) {
     outFile.write(reinterpret_cast<char*>(encPacket->data), encPacket->size);
     av_packet_unref(encPacket);
+  }
+
+  if (onProgress != nullptr) {
+    onProgress(1.0);
   }
 
   // Clean up

@@ -44,4 +44,6 @@ class AudioDevice {
   double getDurationInSeconds();
   void seek(double seconds);
   void setVolume(float volume);
+
+  void fade() {}
 };

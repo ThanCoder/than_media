@@ -8,8 +8,13 @@ output: "lib/than_media_bindings_generated.dart"
 headers:
   entry-points:
     - "src/ffi/ffi_wrapper.h"
+    - "src/include/stb_image_write.h"
+    - "src/include/miniaudio.h"
   include-directives:
     - "src/ffi/ffi_wrapper.h"
+    - "src/include/stb_image_write.h"
+    - "src/include/miniaudio.h"
+
 ffi-native:
 comments:
   style: any

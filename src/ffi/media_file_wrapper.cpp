@@ -11,6 +11,12 @@
 void* media_file_create(const char* file_path) {
   return new MediaFile{file_path};
 }
+void media_file_destroy(void* media_file_ptr) {
+  auto media_file = reinterpret_cast<MediaFile*>(media_file_ptr);
+  if (media_file) {
+    delete media_file;
+  }
+}
 bool media_file_openFile(void* media_file_ptr) {
   auto media = reinterpret_cast<MediaFile*>(media_file_ptr);
   if (media) {

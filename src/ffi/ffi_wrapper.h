@@ -27,16 +27,18 @@ typedef enum {
 
 ///*********************Video Reader********************************* */
 void* video_reader_create(const char* video_path_ptr);
+void video_reader_destroy(void* reader_ptr);
+
 bool video_reader_decode_next_frame(void* reader_ptr,
                                     unsigned char* output_buffer_ptr);
 Video_Format_Info video_reader_get_format_info(void* reader_ptr);
 const char* video_reader_get_codec_name(void* reader_ptr);
 void video_reader_close(void* video_ptr);
-void video_reader_destroy(void* reader_ptr);
 
 ///*********************Audio Device********************************* */
 void* audio_device_create(const char* file_path);
 void audio_device_destroy(void* audio_device_ptr);
+
 bool audio_device_init(void* audio_device_ptr);
 bool audio_device_start(void* audio_device_ptr);
 void audio_device_stop(void* audio_device_ptr);
@@ -46,22 +48,10 @@ double audio_device_getDurationInSeconds(void* audio_device_ptr);
 void audio_device_seek(void* audio_device_ptr, double seconds);
 void audio_device_setVolume(void* audio_device_ptr, float volume);
 
-///*********************File Saver********************************* */
-bool file_saver_saveAsWav(void* media_file_ptr, const char* outPath);
-bool file_saver_saveAsAac(void* media_file_ptr, const char* outPath);
-bool file_saver_saveAsMp3(void* media_file_ptr, const char* outPath);
-// Audio_Format::AUDIO_FORMAT_WAV
-//
-// typedef enum {
-// AUDIO_FORMAT_WAV,
-// AUDIO_FORMAT_AAC,
-// AUDIO_FORMAT_MP3
-// } Audio_Format;
-
-bool file_saver_save_as(void* media_file_ptr, const char* outPath, int format);
-
 ///*********************Media File********************************* */
 void* media_file_create(const char* file_path);
+void media_file_destroy(void* media_file_ptr);
+
 bool media_file_openFile(void* media_file_ptr);
 bool media_file_readNextAudioChunk(void* media_file_ptr,
                                    unsigned char* out_chunk);
@@ -83,6 +73,20 @@ unsigned char* media_file_getVideoThumbnail(void* media_file_ptr, int* out_size,
 bool media_file_saveAsVideoThumbnail(const char* video_file_path,
                                      const char* out_path, double seconds,
                                      int targetWidth, int targetHeight);
+
+///*********************File Saver********************************* */
+// file_saver progress callback
+typedef bool (*OnProgressCallback)(double progress);
+// Audio_Format::AUDIO_FORMAT_WAV
+//
+// typedef enum {
+// AUDIO_FORMAT_WAV,
+// AUDIO_FORMAT_AAC,
+// AUDIO_FORMAT_MP3
+// } Audio_Format;
+
+bool file_saver_save_as(const char* video_path, const char* out_path,
+                        int format, OnProgressCallback on_progress);
 
 #ifdef __cplusplus
 }

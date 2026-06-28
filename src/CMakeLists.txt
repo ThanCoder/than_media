@@ -56,8 +56,6 @@ add_library(than_media SHARED
 #     ffi/ffi_audio_wrapper.cpp
 #     ffi/ffi_file_saver.cpp
 #     ffi/media_file_wrapper.cpp
-
-
 # )
 
 target_include_directories(than_media PRIVATE

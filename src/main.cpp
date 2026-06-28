@@ -2,6 +2,7 @@
 #include <fstream>
 #include <vector>
 
+#include "audio_file_saver.hpp"
 #include "ffi_wrapper.h"
 #include "media_file.hpp"
 #include "video_reader.hpp"
@@ -70,6 +71,11 @@ void playVideo(VideoReader& video) {
   SDL_DestroyWindow(window);
   SDL_Quit();
 }
+
+void onProgressCallback(double progress) {
+  std::cout << "Progress: " << progress * 100 << "%\n";
+}
+
 // ffmpeg-8.1.1
 int main() {
   // VideoReader video("/home/thancoder/Videos/A  Were wolf Boy (2026).mp4");
@@ -83,7 +89,18 @@ int main() {
   //   std::cout << "saved: \n";
   // }
 
-  std::string path = "/home/thancoder/Videos/A  Were wolf Boy (2026).mp4";
-  media_file_saveAsVideoThumbnail(path.c_str(), "../thumb_2.jpg", 1, 0, 0);
+  std::string path = "/home/thancoder/Videos/china.mp4";
+  // media_file_saveAsVideoThumbnail(path.c_str(), "../thumb_2.jpg", 1, 0, 0);
+
+  // auto mm = media_file_create(path.c_str());
+  // media_file_openFile(mm);
+  // file_saver_saveAsMp3(mm, "../china.mp3");
+  MediaFile mf{path};
+
+  AudioFileSaver sf;
+  sf.saveAsMp3(mf, "../china.mp3", onProgressCallback);
+  // sf.saveAsWav(mf, "../china.wav",onProgressCallback);
+  // sf.saveAsAac(mf, "../china.aac", onProgressCallback);
+
   return 0;
 }

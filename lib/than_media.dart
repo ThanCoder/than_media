@@ -7,7 +7,14 @@ import 'package:ffi/ffi.dart';
 import 'package:than_media/than_media_bindings_generated.dart';
 
 export 'than_media_bindings_generated.dart';
+export 'core/audio_device/audio_device.dart';
+export 'core/converter/video_to_audio_converter.dart';
 
+///
+/// ### Video To Thumbnail
+///
+/// width=0,height=0 -> orignal size
+///
 Future<bool> saveAsVideoThumbnail(
   String filePath,
   String outPath, {

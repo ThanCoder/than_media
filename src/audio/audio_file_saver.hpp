@@ -6,15 +6,21 @@
 extern "C" {
 #include <libavutil/audio_fifo.h>
 }
+
+typedef bool (*OnProgressCallback)(double progress);
+
 class AudioFileSaver {
  public:
   // WAV ဖိုင်အဖြစ် သိမ်းဆည်းမည့် Function
-  static bool saveAsWav(MediaFile& decoder, const std::string& outPath);
+  static bool saveAsWav(MediaFile& decoder, const std::string& outPath,
+                        OnProgressCallback onProgress = nullptr);
 
-  static bool saveAsAac(MediaFile& decoder, const std::string& outPath);
+  static bool saveAsAac(MediaFile& decoder, const std::string& outPath,
+                        OnProgressCallback onProgress = nullptr);
 
   // MP3 ဖိုင်အဖြစ် သိမ်းဆည်းမည့် Function
-  static bool saveAsMp3(MediaFile& decoder, const std::string& outPath);
+  static bool saveAsMp3(MediaFile& decoder, const std::string& outPath,
+                        OnProgressCallback onProgress = nullptr);
 
  private:
   // WAV Header ရေးရန် Helper
