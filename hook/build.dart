@@ -1,45 +1,47 @@
-// ignore_for_file: avoid_print
-
 import 'dart:io';
 
 import 'package:code_assets/code_assets.dart';
-import 'package:native_toolchain_c/native_toolchain_c.dart';
-import 'package:logging/logging.dart';
 import 'package:hooks/hooks.dart';
 import 'package:path/path.dart';
 
 void main(List<String> args) async {
   await build(args, (input, output) async {
     final packageName = input.packageName;
-    final source = join(input.packageRoot.toFilePath(), 'native_src');
-    final src = join(source, 'src');
-    final libso = join(
+    final targetOS = input.config.code.targetOS;
+    final targetArchitecture = input.config.code.targetArchitecture;
+    final libSourcePath = join(
       input.packageRoot.toFilePath(),
-      'build',
-      'libmedia_app.so',
+      'src',
+      'dist_binaries',
     );
-    final cbuilder = CBuilder.library(
-      name: packageName,
-      assetName: '${packageName}_bindings_generated.dart',
-      sources: [join(src, 'ffi_wrapper.cpp')],
-      includes: [join(source, 'include')],
-      language: .cpp,
-    );
+    final libName = 'libthan_media.so';
+
+    File? libFile;
+    if (targetOS == .linux) {
+      libFile = File(join(libSourcePath, 'linux', libName));
+    }
+    if (targetOS == .android) {
+      if (targetArchitecture == .arm) {
+        libFile = File(join(libSourcePath, 'android', 'arm64-v8a', libName));
+      }
+      if (targetArchitecture == .arm64) {
+        libFile = File(join(libSourcePath, 'android', 'armeabi-v7a', libName));
+      }
+    }
+
+    if (libFile == null) {
+      throw UnsupportedError(
+        'Unsupported: `${targetOS.name}`-`${targetArchitecture.name}`',
+      );
+    }
+
     output.assets.code.add(
       CodeAsset(
         package: packageName,
-        name: packageName,
+        name: '${packageName}_bindings_generated.dart',
         linkMode: DynamicLoadingBundled(),
-        file: File(libso).uri,
+        file: libFile.uri,
       ),
     );
-    await cbuilder.run(
-      input: input,
-      output: output,
-      logger: Logger('')
-        ..level = .ALL
-        ..onRecord.listen((record) => print(record.message)),
-    );
-    output.dependencies.add(File(libso).uri);
   });
 }

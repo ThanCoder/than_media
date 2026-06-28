@@ -1,7 +1,20 @@
 // ignore_for_file: avoid_print
 
-import 'package:than_media/than_media_bindings_generated.dart';
-
 void main() {
-  print('ffi sum: ${ffi_sum(2345654, 347340)}');
+  // final video_path = "/home/thancoder/Videos/A  Were wolf Boy (2026).mp4"
+  //     .toNativeUtf8();
+  // final out_path = "were_wolf.png".toNativeUtf8();
+  // final media_file_ptr = media_file_create(video_path.cast<Char>());
+
+  // final saved = media_file_saveAsVideoThumbnail(
+  //   media_file_ptr,
+  //   out_path.cast<Char>(),
+  //   1,
+  //   300,
+  //   300,
+  // );
+
+  // if (saved) {
+  //   print('saved');
+  // }
 }

@@ -97,6 +97,12 @@ external bool file_saver_saveAsMp3(
 );
 
 /// Audio_Format::AUDIO_FORMAT_WAV
+///
+/// typedef enum {
+/// AUDIO_FORMAT_WAV,
+/// AUDIO_FORMAT_AAC,
+/// AUDIO_FORMAT_MP3
+/// } Audio_Format;
 @ffi.Native<
   ffi.Bool Function(ffi.Pointer<ffi.Void>, ffi.Pointer<ffi.Char>, ffi.Int)
 >()
@@ -147,9 +153,15 @@ external ffi.Pointer<ffi.Char> media_file_getMetadata(
   ffi.Pointer<ffi.Char> key,
 );
 
-@ffi.Native<ffi.Pointer<ffi.UnsignedChar> Function(ffi.Pointer<ffi.Void>)>()
+@ffi.Native<
+  ffi.Pointer<ffi.UnsignedChar> Function(
+    ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Int>,
+  )
+>()
 external ffi.Pointer<ffi.UnsignedChar> media_file_getAlbumArt(
   ffi.Pointer<ffi.Void> media_file_ptr,
+  ffi.Pointer<ffi.Int> out_size,
 );
 
 /// AudioFormatInfo getTargetFormat(void* media_file_ptr);
@@ -164,6 +176,7 @@ external void media_file_closeFile(ffi.Pointer<ffi.Void> media_file_ptr);
 @ffi.Native<
   ffi.Pointer<ffi.UnsignedChar> Function(
     ffi.Pointer<ffi.Void>,
+    ffi.Pointer<ffi.Int>,
     ffi.Double,
     ffi.Int,
     ffi.Int,
@@ -171,6 +184,25 @@ external void media_file_closeFile(ffi.Pointer<ffi.Void> media_file_ptr);
 >()
 external ffi.Pointer<ffi.UnsignedChar> media_file_getVideoThumbnail(
   ffi.Pointer<ffi.Void> media_file_ptr,
+  ffi.Pointer<ffi.Int> out_size,
+  double seconds,
+  int targetWidth,
+  int targetHeight,
+);
+
+/// jpg format
+@ffi.Native<
+  ffi.Bool Function(
+    ffi.Pointer<ffi.Char>,
+    ffi.Pointer<ffi.Char>,
+    ffi.Double,
+    ffi.Int,
+    ffi.Int,
+  )
+>()
+external bool media_file_saveAsVideoThumbnail(
+  ffi.Pointer<ffi.Char> video_file_path,
+  ffi.Pointer<ffi.Char> out_path,
   double seconds,
   int targetWidth,
   int targetHeight,
