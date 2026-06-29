@@ -150,6 +150,9 @@ bool media_file_saveAsVideoThumbnail(const char* video_file_path,
   if (!media.openFile()) return false;
 
   std::string outPath(out_path);
-  return media.saveAsVideoThumbnail(outPath, seconds, targetWidth,
-                                    targetHeight);
+  bool success =
+      media.saveAsVideoThumbnail(outPath, seconds, targetWidth, targetHeight);
+  // close file
+  media.closeFile();
+  return success;
 }

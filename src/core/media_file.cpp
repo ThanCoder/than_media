@@ -285,7 +285,6 @@ std::vector<uint8_t> MediaFile::getVideoThumbnail(double seconds,
 
   if (!formatContext) return jpegBuffer;
 
-  // Stream ရှာဖွေခြင်း
   if (videoStreamIndex == -1) {
     for (unsigned int i = 0; i < formatContext->nb_streams; i++) {
       if (formatContext->streams[i]->codecpar->codec_type ==
@@ -297,100 +296,128 @@ std::vector<uint8_t> MediaFile::getVideoThumbnail(double seconds,
   }
   if (videoStreamIndex == -1) return jpegBuffer;
 
-  // Video Decoder ဖွင့်ခြင်း
   AVStream* videoStream = formatContext->streams[videoStreamIndex];
   const AVCodec* videoDecoder =
       avcodec_find_decoder(videoStream->codecpar->codec_id);
+  if (!videoDecoder) return jpegBuffer;
+
   AVCodecContext* decCtx = avcodec_alloc_context3(videoDecoder);
   avcodec_parameters_to_context(decCtx, videoStream->codecpar);
+
+  decCtx->thread_count = 0;
+
   if (avcodec_open2(decCtx, videoDecoder, nullptr) < 0) {
     avcodec_free_context(&decCtx);
     return jpegBuffer;
   }
 
-  // Seek လုပ်ခြင်း
+  // ၁။ Seek လုပ်ခြင်း (FFmpeg 8.x အတွက် ပိုမိုစိတ်ချရသော flag)
   int64_t targetTimestamp =
       static_cast<int64_t>(seconds / av_q2d(videoStream->time_base));
   av_seek_frame(formatContext, videoStreamIndex, targetTimestamp,
-                AVSEEK_FLAG_BACKWARD);
+                AVSEEK_FLAG_BACKWARD | AVSEEK_FLAG_FRAME);
   avcodec_flush_buffers(decCtx);
 
   AVFrame* videoFrame = av_frame_alloc();
   AVPacket* vidPacket = av_packet_alloc();
   bool frameDecoded = false;
 
-  // Decode ပတ်ခြင်း Loop
-  while (av_read_frame(formatContext, vidPacket) >= 0) {
+  // ၂။ FFmpeg 8.x ရဲ့ packet reading logic ကို ပိုမိုကျစ်လျစ်အောင် ပြင်ဆင်ခြင်း
+  int readAttempts = 0;
+  while (av_read_frame(formatContext, vidPacket) >= 0 && readAttempts < 100) {
     if (vidPacket->stream_index == videoStreamIndex) {
-      if (avcodec_send_packet(decCtx, vidPacket) == 0) {
-        if (avcodec_receive_frame(decCtx, videoFrame) == 0) {
+      int sendRes = avcodec_send_packet(decCtx, vidPacket);
+      if (sendRes == 0) {
+        int recRes = avcodec_receive_frame(decCtx, videoFrame);
+        if (recRes == 0) {
           frameDecoded = true;
           av_packet_unref(vidPacket);
           break;
+        } else if (recRes == AVERROR(EAGAIN)) {
+          // Frame မပြည့်စုံသေးလို့ နောက် packet တစ်ခု ထပ်ဖတ်ဖို့ လိုအပ်တာပါ
+          av_packet_unref(vidPacket);
+          continue;
         }
       }
     }
     av_packet_unref(vidPacket);
+    readAttempts++;
   }
 
-  // Frame ရပြီဆိုရင် JPEG Encoder ဆောက်ပြီး ပြောင်းလဲခြင်း
+  // အကယ်၍ loop ထဲမှာ keyframe မမိခဲ့ရင် decoder ထဲမှာ ကျန်နေတာကို ဇွတ်ဆွဲထုတ်မယ် (Flush)
+  if (!frameDecoded) {
+    avcodec_send_packet(decCtx, nullptr);
+    if (avcodec_receive_frame(decCtx, videoFrame) == 0) {
+      frameDecoded = true;
+    }
+  }
+
+  // ၃။ Frame ရပြီဆိုရင် JPEG ပြောင်းလဲခြင်း
   if (frameDecoded) {
     int outWidth = (targetWidth <= 0) ? decCtx->width : targetWidth;
     int outHeight = (targetHeight <= 0) ? decCtx->height : targetHeight;
 
-    // MJPEG Encoder ကို ရှာဖွေပြင်ဆင်ခြင်း
     const AVCodec* jpegCodec = avcodec_find_encoder(AV_CODEC_ID_MJPEG);
-    AVCodecContext* encCtx = avcodec_alloc_context3(jpegCodec);
+    if (jpegCodec) {
+      AVCodecContext* encCtx = avcodec_alloc_context3(jpegCodec);
 
-    encCtx->width = outWidth;
-    encCtx->height = outHeight;
-    encCtx->pix_fmt = AV_PIX_FMT_YUVJ420P;  // JPEG အတွက် Standard format
-    encCtx->time_base = {1, 25};
+      encCtx->width = outWidth;
+      encCtx->height = outHeight;
+      // FFmpeg 8.x အတွက် pixel format ကို မူရင်းဗီဒီယိုအတိုင်း fallback ဖြစ်အောင် ထိန်းညှိပေးရပါမယ်
+      // အသစ်ပြင်ဆင်ချက်- deprecated ဖြစ်တဲ့ YUVJ420P အစား YUV420P ကို သုံးပါမယ်
+      encCtx->pix_fmt = AV_PIX_FMT_YUV420P;
 
-    if (avcodec_open2(encCtx, jpegCodec, nullptr) >= 0) {
-      // YUVJ420P သို့ Format ပြောင်းရန် ပြင်ဆင်ခြင်း
-      AVFrame* jpegFrame = av_frame_alloc();
-      jpegFrame->width = outWidth;
-      jpegFrame->height = outHeight;
-      jpegFrame->format = encCtx->pix_fmt;
-      av_frame_get_buffer(jpegFrame, 0);
+      // ကွန်ပိုင်လာ အော်နေတဲ့ range ကို ဒီမှာ သေချာ သတ်မှတ်ပေးလိုက်တာပါ
+      encCtx->color_range = AVCOL_RANGE_JPEG;
 
-      struct SwsContext* swsCtx = sws_getContext(
-          decCtx->width, decCtx->height, decCtx->pix_fmt, outWidth, outHeight,
-          encCtx->pix_fmt, SWS_BILINEAR, nullptr, nullptr, nullptr);
+      encCtx->time_base = {1, 25};
 
-      if (swsCtx) {
-        sws_scale(swsCtx, videoFrame->data, videoFrame->linesize, 0,
-                  decCtx->height, jpegFrame->data, jpegFrame->linesize);
-        sws_freeContext(swsCtx);
+      if (avcodec_open2(encCtx, jpegCodec, nullptr) >= 0) {
+        AVFrame* jpegFrame = av_frame_alloc();
+        jpegFrame->width = outWidth;
+        jpegFrame->height = outHeight;
+        jpegFrame->format = encCtx->pix_fmt;
 
-        // Encode လုပ်ပြီး Packet အဖြစ် ထုတ်ယူခြင်း
-        if (avcodec_send_frame(encCtx, jpegFrame) == 0) {
-          AVPacket* encPacket = av_packet_alloc();
-          if (avcodec_receive_packet(encCtx, encPacket) == 0) {
-            // ဒီနေရာမှာ ဖွင့်လို့ရတဲ့ JPEG binary အစစ် ရပါပြီ
-            jpegBuffer.assign(encPacket->data,
-                              encPacket->data + encPacket->size);
+        if (av_frame_get_buffer(jpegFrame, 0) >= 0) {
+          struct SwsContext* swsCtx = sws_getContext(
+              videoFrame->width, videoFrame->height,
+              (AVPixelFormat)videoFrame->format, outWidth, outHeight,
+              encCtx->pix_fmt, SWS_BILINEAR, nullptr, nullptr, nullptr);
+
+          if (swsCtx) {
+            sws_scale(swsCtx, videoFrame->data, videoFrame->linesize, 0,
+                      videoFrame->height, jpegFrame->data, jpegFrame->linesize);
+            sws_freeContext(swsCtx);
+
+            if (avcodec_send_frame(encCtx, jpegFrame) == 0) {
+              AVPacket* encPacket = av_packet_alloc();
+              if (avcodec_receive_packet(encCtx, encPacket) == 0) {
+                jpegBuffer.assign(encPacket->data,
+                                  encPacket->data + encPacket->size);
+              }
+              av_packet_free(&encPacket);
+            }
           }
-          av_packet_free(&encPacket);
         }
+        av_frame_unref(jpegFrame);
+        av_frame_free(&jpegFrame);
       }
-      av_frame_free(&jpegFrame);
+      avcodec_free_context(&encCtx);
     }
-    avcodec_free_context(&encCtx);
   }
 
   // Cleanup
+  av_frame_unref(videoFrame);
   av_frame_free(&videoFrame);
   av_packet_free(&vidPacket);
   avcodec_free_context(&decCtx);
 
-  return jpegBuffer;  // ဒီ Buffer ကို `.jpg` ဖိုင်နဲ့ တိုက်ရိုက်သိမ်းပြီး ဖွင့်နိုင်ပါပြီ
+  return jpegBuffer;
 }
-
 bool MediaFile::saveAsVideoThumbnail(const std::string& outPath, double seconds,
                                      int targetWidth, int targetHeight) {
   auto thumbnail = getVideoThumbnail(seconds, targetWidth, targetHeight);
+  // std::cout << "size: "<<thumbnail.size() << "\n";
   if (thumbnail.empty()) return false;
 
   std::ofstream outFile(outPath, std::ios::out | std::ios::binary);
@@ -402,68 +429,3 @@ bool MediaFile::saveAsVideoThumbnail(const std::string& outPath, double seconds,
 
   return true;
 }
-
-// VideoFormatInfo MediaFile::getVideoFormatInfo() {
-//   VideoFormatInfo info;
-
-//   if (!formatContext) {
-//     std::cerr << "[Warning] Format context not initialized yet.\n";
-//     return info;
-//   }
-
-//   // ၁။ Video Stream ကို ရှာဖွေခြင်း (တကယ်လို့ ရှာမထားရသေးရင်)
-//   if (videoStreamIndex == -1) {
-//     for (unsigned int i = 0; i < formatContext->nb_streams; i++) {
-//       if (formatContext->streams[i]->codecpar->codec_type ==
-//           AVMEDIA_TYPE_VIDEO) {
-//         videoStreamIndex = i;
-//         break;
-//       }
-//     }
-//   }
-
-//   if (videoStreamIndex == -1) {
-//     std::cerr << "[Warning] No video stream found to get info.\n";
-//     return info;
-//   }
-
-//   AVStream* videoStream = formatContext->streams[videoStreamIndex];
-
-//   // ၂။ Width နဲ့ Height ကို ရယူခြင်း
-//   // videoCodecContext ပွင့်နေရင် အဲဒီကယူမယ်၊ မပွင့်သေးရင် stream parameter က တိုက်ရိုက်ယူမယ်
-//   if (videoCodecContext) {
-//     info.width = videoCodecContext->width;
-//     info.height = videoCodecContext->height;
-//   } else {
-//     info.width = videoStream->codecpar->width;
-//     info.height = videoStream->codecpar->height;
-//   }
-
-//   // ၃။ FPS (Frame Per Second) တွ克ချက်ခြင်း
-//   // FFmpeg မှာ FPS ကို Fraction (Rational number) အဖြစ် သိမ်းတာမို့ double
-//   // ပြောင်းပေးရပါတယ်
-//   if (videoStream->avg_frame_rate.den > 0) {
-//     info.fps = av_q2d(videoStream->avg_frame_rate);
-//   } else if (videoStream->r_frame_rate.den > 0) {
-//     info.fps = av_q2d(videoStream->r_frame_rate);
-//   }
-
-//   // ၄။ Video Duration (ကြာချိန်) တွက်ချက်ခြင်း
-//   if (videoStream->duration != AV_NOPTS_VALUE) {
-//     info.durationSeconds =
-//         videoStream->duration * av_q2d(videoStream->time_base);
-//   } else if (formatContext->duration != AV_NOPTS_VALUE) {
-//     // Stream duration မရှိရင် ဖိုင်တစ်ခုလုံးရဲ့ duration ကို ယူမယ်
-//     info.durationSeconds =
-//         formatContext->duration / static_cast<double>(AV_TIME_BASE);
-//   }
-
-//   // ၅။ Codec Name (ဥပမာ- h264, vp9, hevc) ကို ရယူခြင်း
-//   const AVCodecDescriptor* desc =
-//       avcodec_descriptor_get(videoStream->codecpar->codec_id);
-//   if (desc) {
-//     info.codecName = desc->name;
-//   }
-
-//   return info;
-// }

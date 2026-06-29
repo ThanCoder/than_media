@@ -72,8 +72,9 @@ void playVideo(VideoReader& video) {
   SDL_Quit();
 }
 
-void onProgressCallback(double progress) {
+bool onProgressCallback(double progress) {
   std::cout << "Progress: " << progress * 100 << "%\n";
+  return false;
 }
 
 // ffmpeg-8.1.1
@@ -89,16 +90,24 @@ int main() {
   //   std::cout << "saved: \n";
   // }
 
-  std::string path = "/home/thancoder/Videos/china.mp4";
+  // std::string path = "/home/thancoder/Videos/china.mp4";
+  std::string path = "/home/thancoder/Downloads/Citadel S1 Ep1.mp4";
   // media_file_saveAsVideoThumbnail(path.c_str(), "../thumb_2.jpg", 1, 0, 0);
 
   // auto mm = media_file_create(path.c_str());
   // media_file_openFile(mm);
   // file_saver_saveAsMp3(mm, "../china.mp3");
-  MediaFile mf{path};
+  // MediaFile mf{path};
+  // mf.openFile();
 
-  AudioFileSaver sf;
-  sf.saveAsMp3(mf, "../china.mp3", onProgressCallback);
+  // auto success = mf.saveAsVideoThumbnail("../thumnail.jpg", 3);
+  // if(!success){
+  //   std::cout << "Error\n";
+  //     return  1;
+  // }
+  media_file_saveAsVideoThumbnail(path.c_str(), "../thumnail.jpg", 251, 0, 0);
+  // AudioFileSaver sf;
+  // sf.saveAsMp3(mf, "../china.mp3", onProgressCallback);
   // sf.saveAsWav(mf, "../china.wav",onProgressCallback);
   // sf.saveAsAac(mf, "../china.aac", onProgressCallback);
 
